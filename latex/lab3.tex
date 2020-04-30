@@ -1,0 +1,305 @@
+\documentclass[oneside,final,14pt]{extreport}
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[russian]{babel}
+\usepackage{vmargin}
+\setpapersize{A4}
+\setmarginsrb{2cm}{1.5cm}{1cm}{1.5cm}{0pt}{0mm}{0pt}{13mm}
+\usepackage{indentfirst}
+\sloppy
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{animate}
+\usepackage{hyperref}
+\usepackage{underscore}
+\usepackage{listings}
+\lstset{
+    language = python, 
+    frame=single, 
+    captionpos = b,
+    numbers = left,
+    basicstyle=\footnotesize
+    }
+    
+\newcommand\marker[2][green]{{\fboxsep=0pt\colorbox{#1}{\strut #2}}}
+\newcommand\chap[1]{
+    \section*{#1}
+    \addcontentsline{toc}{chapter}{#1}
+}
+
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \large
+        МИНИСТЕРСТВО ОБРАЗОВАНИЯ И НАУКИ РОССИЙСКОЙ ФЕДЕРАЦИИ
+        
+        Федеральное агентство по образованию
+
+        "<Пермский национальный исследовательский политехнический университет">
+        
+        Кафедра микропроцессорных средств автоматизации
+        \vfill
+
+        Отчёт по лабораторной работе \textnumero 3
+        
+        По дисциплине компьютерная графика
+        
+        На тему: "<Алгоритмы удаления невидимых линий">
+      
+    \end{center}
+    \vfill
+   
+    \newlength{\ML}
+    \settowidth{\ML}{«\underline{\hspace{0.7cm}}» \underline{\hspace{1.5cm}}}
+    \hfill
+    \begin{minipage}{0.5\textwidth}
+        Работу выполнили\\
+        студенты гр. ИСУП-18-2м\\
+        \underline{\hspace{\ML}} А.\,С.~Морозов\\
+        \underline{\hspace{\ML}} В.\,О.~Раскошинский\\
+    \end{minipage}%
+    \bigskip
+   
+    \hfill\begin{minipage}{0.5\textwidth}
+        Проверил доцент кафедры МСА\\
+        \underline{\hspace{\ML}} Л.\,А.~Мыльников\\
+    \end{minipage}%
+    \vfill
+   
+    \begin{center}
+        Пермь, 2020 г.
+    \end{center}
+\end{titlepage}
+
+\newpage
+
+\chap{Описание алгоритма}
+
+Наиболее часто алгоритм плавающего горизонта применяется для удаления невидимых линий при отображении функций, описывающих поверхность в виде $f(x,y,z)=0$. Подобные функции возникают во многих приложениях в математике, технике, естественных науках и других дисциплинах.
+
+Главная идея данного метода заключается в сведении трехмерной задачи к двумерной путем пересечения исходной поверхности последовательностью параллельных секущих плоскостей, имеющих постоянные значения координат $x$, $y$ или $z$.
+
+Параллельные плоскости определяются постоянными значениями $z$. Функция $f(x,y,z)=0$ сводится к последовательности кривых, лежащих в каждой из этих параллельных плоскостей, например к последовательности $y=f(x,z)$ или ${x=g(y,z)}$, где $z$ постоянно на каждой из заданных параллельных плоскостей.
+
+Алгоритм следующий: если на текущей плоскости при некотором заданном значении $x$ соответствующее значение $y$ на кривой больше максимума или меньше минимума по $y$ для всех предыдущих кривых при этом значении $x$, то текущая кривая видима. В противном случае она невидима.
+
+\chap{Реализация алгоритма}
+
+Файл \texttt{subroutine.py} содержит функцию \texttt{horizon}, которая реализует алгоритм плавающего горизонта, представлена в листинге \ref{sub:horizon}.
+
+\begin{lstlisting}[caption = Функция \texttt{horizon} -- реализация алгоритма плавающего горизонта, label = sub:horizon]
+def horizon(x1, y1, x2, y2, top, bottom, image):
+    x = x1
+    y = y1
+    dx = x2 - x1
+    dy = y2 - y1
+    sx = sign(dx)
+    sy = sign(dy)
+    dx = abs(dx)
+    dy = abs(dy)
+
+    if dx == 0 and dy == 0 and 0 <= x < image.width():
+        if y >= top[x]:
+            top[x] = y
+            image.setPixel(x, image.height() - y, Qt.white)
+
+        if y <= bottom[x]:
+            bottom[x] = y
+            image.setPixel(x, image.height() - y, Qt.white)
+
+        return top, bottom
+
+    change = 0
+    if dy > dx:
+        dx, dy = dy, dx
+        change = 1
+
+    y_max_curr = top[x]
+    y_min_curr = bottom[x]
+    e = 2 * dy - dx
+
+    i = 1
+    while i <= dx:
+        if 0 <= x < image.width():
+
+            if y >= top[x]:
+                if y >= y_max_curr:
+                    y_max_curr = y
+                image.setPixel(x, image.height() - y, Qt.white)
+
+            if y <= bottom[x]:
+                if y <= y_min_curr:
+                    y_min_curr = y
+                image.setPixel(x, image.height() - y, Qt.white)
+
+        if e >= 0:
+            if change:
+                top[x] = y_max_curr
+                bottom[x] = y_min_curr
+
+                x += sx
+
+                y_max_curr = top[x]
+                y_min_curr = bottom[x]
+
+            else:
+                y += sy
+
+            e -= 2 * dx
+        if e < 0:
+            if not change:
+                top[x] = y_max_curr
+                bottom[x] = y_min_curr
+
+                x += sx
+
+                y_max_curr = top[x]
+                y_min_curr = bottom[x]
+
+            else:
+                y += sy
+
+            e += 2 * dy
+
+        i += 1
+
+    return top, bottom
+\end{lstlisting}
+
+Данная функция импортируется в файл \texttt{horizon.py} и используется совместно с функциями поворота координат \texttt{rotateX}, \texttt{rotateY}, \texttt{rotateZ} и \texttt{tranform} в функции \verb:float_horizon:. Исходный код функции \verb:float_horizon: представлен в листинге \ref{horizon:float_horizon}.
+
+\vfill
+
+\begin{lstlisting}[caption = {Функция \texttt{float_horizon} -- использование алгоритма}, label = horizon:float_horizon]
+def float_horizon(scene_width, scene_hight, x_min, x_max, 
+                  x_step, z_min, z_max, z_step,
+                  tx, ty, tz, func, image):
+    x_right = -1
+    y_right = -1
+    x_left = -1
+    y_left = -1
+
+    # initialization of horizon arrays
+    
+    z = z_max
+    while z >= z_min:
+        z_buf = z
+        x_prev = x_min
+        y_prev = func(x_min, z)
+        x_prev, y_prev, z_buf = tranform(x_prev, y_prev, z, tx, ty, tz)
+
+        # process the left edge (look at the previous with the current)
+        if x_left != -1:
+            top, bottom = horizon(x_prev, y_prev, x_left, y_left, top, bottom, image)
+        x_left = x_prev
+        y_left = y_prev
+
+        x = x_min
+        while x <= x_max:
+            y = func(x, z)
+            x_curr, y_curr, z_buf = tranform(x, y, z, tx, ty, tz)
+
+            # Adding to the horizon and drawing lines
+            # start to draw not from the previous one 
+            # but already from the transformed
+            top, bottom = horizon(x_prev, y_prev, x_curr, y_curr, top, bottom, image)
+            x_prev = x_curr
+            y_prev = y_curr
+
+            x += x_step
+
+        # process the right edge (look at the current one with the following)
+        if z != z_max:
+            x_right = x_max
+            y_right = func(x_max, z - z_step)
+            x_right, y_right, z_buf = tranform(x_right, y_right, 
+                                               z-z_step, tx, ty, tz)
+            top, bottom = horizon(x_prev, y_prev, x_right, y_right, 
+                                  top, bottom, image)
+
+        z -= z_step
+
+    return image
+\end{lstlisting}
+
+В то же время функция \texttt{float_horizon} импортируется в файл \texttt{lab.py} и используется в функции \texttt{draw}. Исходный код функции \texttt{draw} представлен в листинге \ref{lab:draw}. Функция \texttt{draw} используется в классе \texttt{Window} для визуализации результатов при изменении входных значений, полученных из пользовательского интерфейса, который описан в файле \texttt{window.ui}. 
+
+\begin{lstlisting}[caption = Функция \texttt{draw} -- визуализация результатов, label = lab:draw]
+def draw(win):
+    win.scene.clear()
+    win.image.fill(black)
+    tx = win.dial_x.value()
+    ty = win.dial_y.value()
+    tz = win.dial_z.value()
+
+    if win.funcs.currentText() == "- sin(x**2 + y**2)":
+        f = f1
+
+    if win.funcs.currentText() == "(sin(sqrt(x**2 + y**2)))/(sqrt(x**2 + y**2))":
+        f = f2
+
+    if win.funcs.currentText() == "exp((- x**2 - y**2) * x)":
+        f = f3
+
+    if win.funcs.currentText() == "sqrt(x**2+y**2)+3*(cos(sqrt(x**2+y**2)))+5":
+        f = f4
+
+    win.image = float_horizon(win.scene.width(), 
+                              win.scene.height(), 
+                              win.x_min.value(), 
+                              win.x_max.value(), 
+                              win.dx.value(),
+                              win.z_min.value(), 
+                              win.z_max.value(), 
+                              win.dz.value(), 
+                              tx, ty, tz, f, 
+                              win.image)
+
+    pix = QPixmap()
+    pix.convertFromImage(win.image)
+    win.scene.addPixmap(pix)
+\end{lstlisting}
+
+Графический интерфейс пользователя представлен на рисунках \ref{gui:1}, \ref{gui:2} и \ref{gui:3}.
+
+Весь код и результаты его работы представлены в открытом \href{https://github.com/morozov6420/floating_horizon_algorithm}{репозитории}.
+
+\begin{figure}[ht]
+    \minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f1\string_1.png"}
+    \endminipage\hfill
+    \minipage{0.4\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f1\string_2.png"}
+    \endminipage\hfill
+    \caption{\(z=-sin\left(x^2 + y^2\right)\)}
+    \label{gui:1}
+\end{figure}
+
+\begin{figure}[ht]
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f2\string_1.png"}
+    \endminipage\hfill
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f2\string_2.png"}
+    \endminipage\hfill
+    \caption{\(z=\frac{sin\left(\sqrt{x^2 + y^2}\right)}{\sqrt{x^2 + y^2}}\)}
+    \label{gui:2}
+\end{figure}
+
+\begin{figure}[ht]
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f4\string_1.png"}
+    \endminipage\hfill
+    \minipage{0.5\textwidth}
+    \includegraphics[width=\linewidth]{"../screens/f4\string_2.png"}
+    \endminipage\hfill
+    \caption{\(z=\sqrt{x^2 + y^2} + 3 \cdot cos\left(\sqrt{x^2 + y^2}\right)+5\)}
+    \label{gui:3}
+\end{figure}
+
+\end{document}
